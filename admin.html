@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Apuração — Admin</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+  body { min-height: 100vh; background: #0f0c29; color: #fff; padding: 40px 20px; }
+  .wrap { max-width: 700px; margin: 0 auto; }
+  h1 { color: #00ffcc; margin-bottom: 20px; text-align: center; }
+  .login, .painel {
+    background: #1a1a2e; border: 1px solid #00ffcc; border-radius: 12px;
+    padding: 24px;
+  }
+  input { width: 100%; padding: 12px; margin-bottom: 12px; background: #000; color: #00ff88; border: 1px solid #00ffcc; border-radius: 8px; font-size: 1rem; }
+  button { width: 100%; padding: 12px; background: #00ffcc; color: #000; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; }
+  button:hover { filter: brightness(1.1); }
+  .painel { display: none; }
+  .barra { height: 32px; background: #0f3460; border-radius: 6px; margin: 6px 0 18px; overflow: hidden; position: relative; }
+  .barra > div { height: 100%; display: flex; align-items: center; padding-left: 10px; font-weight: bold; color: #000; transition: width .6s; }
+  .b13 { background: linear-gradient(90deg,#ff0055,#ff6666); color:#fff;}
+  .b22 { background: linear-gradient(90deg,#00aaff,#66ccff); }
+  .bbr { background: #888; }
+  .linha { display: flex; justify-content: space-between; margin-bottom: 4px; font-weight: bold; }
+  .num { color: #ffd700; font-size: 1.1rem; }
+  .total { text-align: center; margin: 20px 0; font-size: 1.2rem; color: #00ffcc; }
+  .vencedor { text-align: center; padding: 16px; background: #00c853; color: #fff; border-radius: 8px; margin-top: 16px; font-weight: bold; font-size: 1.1rem; }
+  .erro { color: #ff5252; margin-top: 10px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔒 Painel de Apuração</h1>
+
+  <div class="login" id="login">
+    <input type="password" id="senha" placeholder="Senha de admin">
+    <button onclick="entrar()">Entrar</button>
+    <div class="erro" id="erroLogin"></div>
+  </div>
+
+  <div class="painel" id="painel">
+    <div class="total" id="total">Carregando...</div>
+
+    <div class="linha"><span>Lulatron Guevara Droid (13)</span><span class="num" id="v13">0</span></div>
+    <div class="barra"><div class="b13" id="b13" style="width:0%"></div></div>
+
+    <div class="linha"><span>Flavio Metanaro (22)</span><span class="num" id="v22">0</span></div>
+    <div class="barra"><div class="b22" id="b22" style="width:0%"></div></div>
+
+    <div class="linha"><span>Brancos / Nulos</span><span class="num" id="vbr">0</span></div>
+    <div class="barra"><div class="bbr" id="bbr" style="width:0%"></div></div>
+
+    <div id="vencedor"></div>
+    <button style="margin-top:20px" onclick="carregar()">🔄 Atualizar</button>
+    <button style="margin-top:10px; background:#ff5252; color:#fff" onclick="resetar()">🗑️ Zerar Urna</button>
+  </div>
+</div>
+
+<script>
+  let senhaAtual = '';
+
+  function entrar() {
+    senhaAtual = document.getElementById('senha').value;
+    if (!senhaAtual) { document.getElementById('erroLogin').textContent = 'Digite a senha'; return; }
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('painel').style.display = 'block';
+    carregar();
+  }
+
+  async function carregar() {
+    try {
+      const res = await fetch('/.netlify/functions/resultados', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ senha: senhaAtual })
+      });
+      if (res.status === 401) { alert('Senha inválida!'); location.reload(); return; }
+      const d = await res.json();
+      const total = d.v13 + d.v22 + d.brancos;
+      document.getElementById('total').textContent = `Total de votos: ${total}`;
+      document.getElementById('v13').textContent = d.v13;
+      document.getElementById('v22').textContent = d.v22;
+      document.getElementById('vbr').textContent = d.brancos;
+      const p = n => total ? (n/total*100).toFixed(1) : 0;
+      document.getElementById('b13').style.width = p(d.v13) + '%';
+      document.getElementById('b22').style.width = p(d.v22) + '%';
+      document.getElementById('bbr').style.width = p(d.brancos) + '%';
+      document.getElementById('b13').textContent = p(d.v13) + '%';
+      document.getElementById('b22').textContent = p(d.v22) + '%';
+      document.getElementById('bbr').textContent = p(d.brancos) + '%';
+
+      const venc = document.getElementById('vencedor');
+      if (total === 0) { venc.innerHTML = ''; }
+      else if (d.v13 > d.v22) venc.textContent = '🏆 VENCEDOR: Lulatron Guevara Droid (13)';
+      else if (d.v22 > d.v13) venc.textContent = '🏆 VENCEDOR: Flavio Metanaro (22)';
+      else venc.textContent = '⚖️ EMPATE TÉCNICO';
+    } catch(e) {
+      alert('Erro: ' + e.message);
+    }
+  }
+
+  async function resetar() {
+    if (!confirm('Tem certeza? Isso apaga TODOS os votos!')) return;
+    if (!confirm('SÉRIO MESMO? Não tem volta!')) return;
+    const res = await fetch('/.netlify/functions/resultados', {
+      method: 'DELETE',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ senha: senhaAtual })
+    });
+    if (res.ok) { alert('Urna zerada!'); carregar(); }
+    else alert('Erro ao zerar');
+  }
+</script>
+</body>
+</html>
