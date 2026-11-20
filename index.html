@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urna Eletrônica Cyber</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .urna {
+    background: #1a1a2e;
+    border: 2px solid #00ffcc;
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 720px; width: 100%;
+    box-shadow: 0 0 40px rgba(0,255,204,0.3);
+  }
+  h1 { text-align: center; color: #00ffcc; font-size: 1.5rem; margin-bottom: 8px; letter-spacing: 2px; }
+  .sub { text-align: center; color: #888; font-size: .8rem; margin-bottom: 24px; }
+  .display {
+    background: #000;
+    border: 2px solid #00ffcc;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    font-size: 3rem;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 12px;
+    color: #00ff88;
+    min-height: 90px;
+    display: flex; align-items: center; justify-content: center;
+    text-shadow: 0 0 10px #00ff88;
+    margin-bottom: 20px;
+  }
+  .teclado {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .teclado button {
+    padding: 18px;
+    font-size: 1.4rem;
+    font-weight: bold;
+    background: #16213e;
+    color: #00ffcc;
+    border: 1px solid #00ffcc;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .teclado button:hover:not(:disabled) { background: #00ffcc; color: #000; }
+  .teclado button:active:not(:disabled) { transform: scale(.95); }
+  .teclado button:disabled { opacity: .35; cursor: not-allowed; }
+  .acoes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .acoes button {
+    padding: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;
+    border: none; font-size: .9rem; transition: all .15s;
+  }
+  .branco { background: #fff; color: #000; }
+  .corrige { background: #ff9800; color: #000; }
+  .confirma { background: #00c853; color: #fff; }
+  .acoes button:hover:not(:disabled) { filter: brightness(1.15); }
+  .acoes button:active:not(:disabled) { transform: scale(.95); }
+  .acoes button:disabled { opacity: .5; cursor: not-allowed; }
+  .msg {
+    text-align: center; margin-top: 18px; font-size: .85rem; min-height: 20px; color: #00ffcc;
+  }
+  .msg.erro { color: #ff5252; }
+  .candidatos { display: none; margin-bottom: 16px; }
+  .candidatos.ativo { display: block; animation: fade .3s; }
+  .card {
+    background: #0f3460; border-left: 4px solid #00ffcc;
+    padding: 14px; border-radius: 8px; margin-bottom: 10px;
+  }
+  .card h3 { color: #00ffcc; font-size: 1rem; margin-bottom: 4px; }
+  .card p { font-size: .8rem; color: #ccc; line-height: 1.4; margin-bottom: 4px; }
+  .card .num { color: #ffd700; font-weight: bold; font-size: 1.2rem; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px);} to {opacity:1; transform:none;} }
+</style>
+</head>
+<body>
+<div class="urna">
+  <h1>⚡ URNA ELETRÔNICA CYBER ⚡</h1>
+  <div class="sub">Eleições Livres de Cyber-Mendingos • 2026</div>
+
+  <div class="display" id="display">--</div>
+
+  <div class="candidatos" id="painelCand">
+    <div class="card">
+      <h3><span class="num">13</span> — Lulatron Guevara Droid</h3>
+      <p>Votem em mim meus web-companheiros, prometo um futuro com cyber-picanha e uma delta-democracia livre com compartilhamento de tela no Discordtron 2.</p>
+      <p>Vote 13 por uma Internet livre de cyber-mendingos e grandes corporações monopolizando todas as IAs.</p>
+    </div>
+    <div class="card">
+      <h3><span class="num">22</span> — Flavio Metanaro</h3>
+      <p>Votem em mim para removermos a cyber corrupção desse governo cyber-petista que está empobrecendo a população, vamos focar na economia e geração de empregos, os benefícios irão ser mantidos.</p>
+    </div>
+  </div>
+
+  <div class="teclado">
+    <button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button>
+    <button data-n="4">4</button><button data-n="5">5</button><button data-n="6">6</button>
+    <button data-n="7">7</button><button data-n="8">8</button><button data-n="9">9</button>
+    <button data-n="0">0</button><button data-n="branco" class="branco">BRANCO</button><button data-n="corrige" class="corrige">CORRIGE</button>
+  </div>
+  <div class="acoes">
+    <div></div>
+    <button class="confirma" id="btnConfirma">CONFIRMA</button>
+    <div></div>
+  </div>
+  <div class="msg" id="msg"></div>
+</div>
+
+<script>
+  let voto = "";
+  const display = document.getElementById('display');
+  const msg = document.getElementById('msg');
+  const painelCand = document.getElementById('painelCand');
+  const btnConfirma = document.getElementById('btnConfirma');
+
+  function getEleitorId() {
+    let id = localStorage.getItem('eleitorId');
+    if (!id) {
+      id = 'e_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('eleitorId', id);
+    }
+    return id;
+  }
+
+  function jaVotou() { return localStorage.getItem('jaVotou') === '1'; }
+
+  function travarUrna() {
+    display.textContent = "FIM";
+    msg.textContent = "✅ Você já votou nesta urna. Obrigado, web-companheiro!";
+    msg.className = "msg";
+    btnConfirma.disabled = true;
+    document.querySelectorAll('.teclado button').forEach(b => b.disabled = true);
+  }
+
+  if (jaVotou()) travarUrna();
+
+  function atualizar() {
+    display.textContent = voto === "" ? "--" : voto;
+    if (voto === "13" || voto === "22") painelCand.classList.add('ativo');
+    else painelCand.classList.remove('ativo');
+  }
+
+  document.querySelectorAll('.teclado button').forEach(b => {
+    b.addEventListener('click', () => {
+      if (jaVotou()) return;
+      const n = b.dataset.n;
+      if (n === 'branco') { voto = 'BRANCO'; msg.textContent = "Voto em BRANCO selecionado"; msg.className = "msg"; atualizar(); return; }
+      if (n === 'corrige') { voto = ""; msg.textContent = ""; msg.className = "msg"; atualizar(); return; }
+      if (voto === 'BRANCO') voto = "";
+      if (voto.length < 2) { voto += n; msg.textContent = ""; msg.className = "msg"; atualizar(); }
+    });
+  });
+
+  btnConfirma.addEventListener('click', async () => {
+    if (jaVotou()) { travarUrna(); return; }
+    if (voto === "") { msg.textContent = "Digite um voto ou escolha BRANCO"; msg.className = "msg erro"; return; }
+
+    btnConfirma.disabled = true; btnConfirma.textContent = "ENVIANDO...";
+    try {
+      const res = await fetch('/.netlify/functions/votar', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ voto, eleitorId: getEleitorId() })
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        localStorage.setItem('jaVotou', '1');
+        msg.textContent = "✅ VOTO CONFIRMADO! Obrigado, web-companheiro.";
+        msg.className = "msg";
+        voto = ""; atualizar();
+        travarUrna();
+      } else if (data.jaVotou) {
+        localStorage.setItem('jaVotou', '1');
+        travarUrna();
+      } else {
+        throw new Error(data.erro || 'Falha');
+      }
+    } catch (e) {
+      msg.textContent = "❌ Erro ao votar: " + e.message;
+      msg.className = "msg erro";
+      btnConfirma.disabled = false; btnConfirma.textContent = "CONFIRMA";
+    }
+  });
+</script>
+</body>
+</html>
